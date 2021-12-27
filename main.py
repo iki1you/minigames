@@ -43,20 +43,6 @@ class Ui_MainWindow(object):
         self.toolButton.setText(_translate("MainWindow", "Крокодил"))
 
 
-def draw(screen, x, y, btn_size_x, btn_size_y, text='', color=None, options=False):
-    font = pygame.font.SysFont('arial', 25)
-    text1 = font.render(text, 1, (0, 0, 0))
-    if text == '':
-        pygame.draw.rect(screen, (0, 0, 0), (x, y, btn_size_x, btn_size_y))
-    if options:
-        pygame.draw.rect(screen, color, (x, y, btn_size_x, btn_size_y))
-        screen.blit(text1, (x + 10, y + btn_size_y // 4))
-
-
-def py_game():
-    pass
-
-
 if __name__ == "__main__":
     import sys
 
