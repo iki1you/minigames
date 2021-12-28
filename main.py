@@ -51,7 +51,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def push(self):
-        ex.show()
+        ex.show() #Переход в файл paint.py
         MainWindow.close()
 
     def retranslateUi(self, MainWindow):

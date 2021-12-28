@@ -41,8 +41,8 @@ class Ui_RunWindow(object):
 
     def RUN(self):
 
-        if self.lineEdit_2.text() != "":
-            MainWindow.show()
+        if self.lineEdit_2.text() != "": #Проверка на наличие никнейма
+            MainWindow.show() #Переход в файл main.py
             ui = main.Ui_MainWindow()
             ui.setupUi(MainWindow)
             RunWindow.close()
