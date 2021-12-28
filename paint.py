@@ -333,7 +333,7 @@ class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
 
-        self.setWindowTitle('Paint 2.4')
+        self.setWindowTitle('Крокодил')
         self.setCentralWidget(DrawWidget())
         self.setFixedSize(800, 800)
         self.about_window = AboutWindow()

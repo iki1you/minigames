@@ -1,6 +1,11 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-
+import pygame, sys
+from pygame.locals import *
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QLabel, QAction, qApp, QCheckBox
+import paint
 import main
+
 
 
 class Ui_RunWindow(object):
@@ -33,22 +38,30 @@ class Ui_RunWindow(object):
         self.retranslateUi(RunWindow)
         QtCore.QMetaObject.connectSlotsByName(RunWindow)
 
+
     def RUN(self):
-        ax.show()
-        RunWindow.hide()
+
+        if self.lineEdit_2.text() != "":
+            MainWindow.show()
+            ui = main.Ui_MainWindow()
+            ui.setupUi(MainWindow)
+            RunWindow.close()
+
+        else:
+            pass
+
 
     def retranslateUi(self, RunWindow):
         _translate = QtCore.QCoreApplication.translate
-        RunWindow.setWindowTitle(_translate("RunWindow", "MainWindow"))
+        RunWindow.setWindowTitle(_translate("RunWindow", "RunWindow"))
         self.label_2.setText(_translate("RunWindow", "Введите свой ник:"))
         self.pushButton.setText(_translate("RunWindow", "Войти"))
-
 
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
     RunWindow = QtWidgets.QMainWindow()
-    ax = main.MainWindow()
+    MainWindow = main.QtWidgets.QMainWindow()
     ui = Ui_RunWindow()
     ui.setupUi(RunWindow)
     RunWindow.show()
