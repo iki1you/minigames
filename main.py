@@ -123,7 +123,6 @@ if __name__ == "__main__":
         e = False
     if not e:
         sys.exit(app.exec_())
-    nickname = "MyLongCode"
     CROCODILE = crocodile.Window() #крокодил
     win = Window(nickname) #главное меню
     win.show()
