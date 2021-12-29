@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QPen, QIcon, QImage, QCursor, QColor, QBrush, QPixmap
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QLabel, QAction, qApp, QCheckBox
 from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QColorDialog, QPushButton, QSlider, QLineEdit
+import main
 
 
 class DrawWidget(QMainWindow):

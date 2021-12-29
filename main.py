@@ -1,76 +1,82 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QWidget
-
 import paint
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 600)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
-        self.toolButton = QtWidgets.QToolButton(self.centralwidget)
-        self.toolButton.setGeometry(QtCore.QRect(20, 110, 211, 71))
-        font = QtGui.QFont()
-        font.setPointSize(24)
-        self.toolButton.setFont(font)
-        self.toolButton.setObjectName("toolButton")
-        self.label = QtWidgets.QLabel(self.centralwidget)
-        self.label.setGeometry(QtCore.QRect(10, 50, 231, 41))
-        font = QtGui.QFont()
-        font.setPointSize(30)
-        self.label.setFont(font)
-        self.label.setObjectName("label")
-        self.label_2 = QtWidgets.QLabel(self.centralwidget)
-        self.label_2.setGeometry(QtCore.QRect(270, 260, 271, 81))
-        font = QtGui.QFont()
-        font.setPointSize(40)
-        self.label_2.setFont(font)
-        self.label_2.setObjectName("label_2")
-        self.label_3 = QtWidgets.QLabel(self.centralwidget)
-        self.label_3.setEnabled(True)
-        self.label_3.setGeometry(QtCore.QRect(350, 30, 391, 121))
-        font = QtGui.QFont()
-        font.setPointSize(16)
-        font.setBold(False)
-        font.setWeight(50)
-        font.setStrikeOut(False)
-        self.label_3.setFont(font)
-        self.label_3.setTabletTracking(False)
-        self.label_3.setAutoFillBackground(False)
-        self.label_3.setTextFormat(QtCore.Qt.PlainText)
-        self.label_3.setWordWrap(True)
-        self.label_3.setObjectName("label_3")
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-        self.toolButton.clicked.connect(self.push)
+name = "NULL"
 
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self, name):
+        QtWidgets.QMainWindow.__init__(self)
+        self.name = name
+        self.setMinimumSize(QtCore.QSize(1000, 800))
+        self.setWindowTitle("Главное меню")
+        fontButton = QtGui.QFont() #Cтили текста для кнопок и лейблов
+        fontButton.setPointSize(24)
+        fontLabel1 = QtGui.QFont()
+        fontLabel1.setPointSize(30)
+        fontLabel2 = QtGui.QFont()
+        fontLabel2.setPointSize(34)
+        fontLabel3 = QtGui.QFont()
+        fontLabel3.setPointSize(20)
+        button1 = QtWidgets.QPushButton('Крокодил', self)
+        button1.resize(250, 50)
+        button1.move(25, 115)
+        button1.setFont(fontButton)
+        button1.clicked.connect(self.push)
+        label1 = QtWidgets.QLabel("Список игр:", self)
+        label1.resize(250,50)
+        label1.setFont(fontLabel1)
+        label1.move(25,50)
+        label2 = QtWidgets.QLabel("Ваш ник: " + self.name, self)
+        label2.resize(500,50)
+        label2.setFont(fontLabel2)
+        label2.move(380,350)
+        label3 = QtWidgets.QLabel("Новости: Патч v0.001 добавлен интерфейс и возможность вводить ник", self)
+        label3.resize(400,400)
+        label3.move(450,-100)
+        label3.setFont(fontLabel3)
+        label3.setWordWrap(True)
 
     def push(self):
-        ex.show() #Переход в файл paint.py
-        MainWindow.close()
+        ex.show()  # Переход в файл paint.py
+        print(self.name)
 
-    def retranslateUi(self, MainWindow):
-        _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.toolButton.setText(_translate("MainWindow", "Крокодил"))
-        self.label.setText(_translate("MainWindow", "Список игр:"))
-        self.label_2.setText(_translate("MainWindow", "Ваш ник:"))
-        self.label_3.setText(_translate("MainWindow", "Новости: Патч v0.001 добавлен интерфейс и возможность вводить "
-                                                      "ник"))
+class RunWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        QtWidgets.QMainWindow.__init__(self)
+        self.setMinimumSize(QtCore.QSize(500, 300))
+        self.setWindowTitle("Введите ник")
+        label1 = QtWidgets.QLabel("Введите свой ник:",self)
+        font = QtGui.QFont()
+        font.setPointSize(24)
+        fontButton = QtGui.QFont()
+        fontButton.setPointSize(16)
+        label1.setFont(font)
+        label1.resize(400,50)
+        label1.move(50,50)
+        self.lineEdit = QtWidgets.QLineEdit("",self)
+        self.lineEdit.resize(400,30)
+        self.lineEdit.move(50,120)
+        button1 = QtWidgets.QPushButton("Вход", self)
+        button1.setFont(fontButton)
+        button1.move(200,200)
+        button1.resize(100,50)
+        button1.clicked.connect(self.push)
+        self.name = "NULL"
 
+    def push(self):
+        if self.lineEdit.text() != "":
+            self.name = self.lineEdit.text()
+
+            ax.show()
 
 
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
     ex = paint.Window()
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
+    runwindow = RunWindow()
+    ax = MainWindow(runwindow.name)
+    win = RunWindow()
+    win.show()
     sys.exit(app.exec_())
