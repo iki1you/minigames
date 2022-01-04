@@ -35,9 +35,7 @@ class Client(QtWidgets.QMainWindow):
         # Обработчики основных кнопок + кнопок с панели
         self.ui.pushButton.clicked.connect(self.send_message)
         self.ui.pushButton_2.clicked.connect(self.connect_to_server)
-        self.ui.pushButton_3.clicked.connect(lambda: self.close())
         self.ui.pushButton_4.clicked.connect(lambda: self.ui.listWidget.clear())
-        self.ui.pushButton_5.clicked.connect(lambda: self.showMinimized())
         self.ui.pushButton_7.clicked.connect(self.setting_panel)
 
 
