@@ -97,7 +97,7 @@ class Window(QMainWindow):
 
 
 
-    def push(self):
+    def push(self): # изменения главного фрэйма
         if self.button1.text() == "Назад":
             self.button1.setText("Крокодил")
             self.label3.setText("Новости: Патч v0.001. добавлен интерфейс и возможность вводить ник.")
@@ -111,6 +111,7 @@ class Window(QMainWindow):
             self.button1.setText("Назад")
 
     def go(self):
+        pass
         CROCODILE.show()  # Переход в файл crocodile.py
 
 

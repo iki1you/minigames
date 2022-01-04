@@ -1,11 +1,13 @@
 import sys
-from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QPainter, QPen, QIcon, QImage, QCursor, QColor, QBrush, QPixmap
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QLabel, QAction, qApp, QCheckBox
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QColorDialog, QPushButton, QSlider, QLineEdit, QMessageBox
-import main
+from PyQt5.QtCore import Qt, QPoint, QRectF
+from PyQt5.QtGui import QPainter, QPen, QIcon, QImage, QCursor, QColor, QBrush
+from PyQt5.QtWidgets import *
 
+import socket
+from des import *
+
+from methods.SettingsPanel import *
+from methods.ConnectThreadMonitor import *
 
 class DrawWidget(QMainWindow):
     def __init__(self):
@@ -26,6 +28,8 @@ class DrawWidget(QMainWindow):
         self.toolbar = ToolBar(self)
         self.setContextMenuPolicy(Qt.PreventContextMenu)
         self.setCursor(QCursor(Qt.CrossCursor))
+
+
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton or event.button() == Qt.RightButton:
@@ -273,41 +277,6 @@ class Square:
         painter.drawPolygon(*self.poligon)
 
 
-class AboutWindow(QWidget):
-    def __init__(self):
-        super(AboutWindow, self).__init__()
-
-        self.setWindowTitle('Справка')
-        self.setFixedSize(270, 200)
-        self.circle = QPixmap('icons/s.png')
-        self.info = QLabel(self)
-        self.info.setPixmap(self.circle)
-        self.info.move(0, 50)
-        self.txt = QLabel(self)
-        self.txt.move(5, 5)
-        self.txt.setText('"Paint 2.4" - растровый графический редактор, \nс расширенными возможностями для рисования.')
-        self.txt2 = QLabel(self)
-        self.txt2.move(5, 160)
-        self.txt2.setText('создано на pyqt5')
-
-
-class Question(QWidget):
-    def __init__(self):
-        super(Question, self).__init__()
-
-        self.setWindowTitle('Справка')
-        self.setFixedSize(770, 230)
-        self.circle = QPixmap('icons/circleh.png')
-        self.info = QLabel(self)
-        self.info.setPixmap(self.circle)
-        self.txt = QLabel(self)
-        self.txt.move(5, 200)
-        self.txt.setText('Точка O, где x1,y1 - начальные координаты; B, где x2,y2 - конечные.')
-
-
-
-
-
 
 class Text(QWidget):
     def __init__(self, e):
@@ -334,22 +303,233 @@ class Text(QWidget):
         self.close()
 
 
+class Chat(QMainWindow):
+    def __init__(self, parent=None):
+        QtWidgets.QWidget.__init__(self, parent)
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+
+        # Данные из конфига (симметричный ключ получаем в ответе от сервера)
+        self.nick = None
+        self.ip = None
+        self.port = None
+        self.smile_type = None
+        self.connect_status = False
+
+        # Экземпляр класса для обработки соединений и сигналов
+        self.connect_monitor = message_monitor()
+        self.connect_monitor.mysignal.connect(self.signal_handler)
+
+        # Отключаем стандартные границы окна программы
+        self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        self.center()
+
+        # Обработчики основных кнопок + кнопок с панели
+        self.ui.pushButton.clicked.connect(self.send_message)
+        self.ui.pushButton_2.clicked.connect(self.connect_to_server)
+        self.ui.pushButton_4.clicked.connect(lambda: self.ui.listWidget.clear())
+        self.ui.pushButton_7.clicked.connect(self.setting_panel)
+
+
+    # Перетаскивание безрамочного окна
+    # ==================================================================
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QtWidgets.QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        try:
+            delta = QtCore.QPoint(event.globalPos() - self.oldPos)
+            self.move(self.x() + delta.x(), self.y() + delta.y())
+            self.oldPos = event.globalPos()
+        except AttributeError:
+            pass
+
+
+
+    # Открыть окно для настройки клиента
+    def setting_panel(self):
+        setting_win = SettingPanel(self, self.connect_monitor.mysignal)
+        setting_win.show()
+
+
+    # Обновление конфигов клиента
+    def update_config(self):
+        """
+        Используется для обновления значений на лету, без необходимости
+        перезапускать клиент (В случае если пользователь отредактировал настройки
+        либо же запустил софт и необходимо проинициализировать значения)
+        """
+        # Если конфиг уже был создан
+        if os.path.exists(os.path.join("data", "config.json")):
+            with open(os.path.join("data", "config.json")) as file:
+                data = json.load(file)
+                self.nick = data['nick']
+                self.ip = data['server_ip']
+                self.port = int(data['server_port'])
+
+
+    # Обработчик сигналов из потока
+    def signal_handler(self, value: list):
+        # Обновление параметров конфига
+        if value[0] == "update_config":
+            self.update_config()
+
+        # Обновление симметричного ключа
+        elif value[0] == "SERVER_OK":
+            self.connect_status = True
+            item = QtWidgets.QListWidgetItem()
+            item.setTextAlignment(QtCore.Qt.AlignHCenter)
+            item.setText(f"SERVER: {value[1]}\n")
+            self.ui.listWidget.addItem(item)
+            print(value)
+
+
+        # Обработка сообщений других пользователей
+        # ['ENCRYPT_MESSAGE', self.nick, smile_num, message_text.encode()]
+        elif value[0] == "ENCRYPT_MESSAGE":
+            item = QtWidgets.QListWidgetItem()
+            item.setTextAlignment(QtCore.Qt.AlignRight)
+
+            if value[2] != None:
+                size = QtCore.QSize(45, 45)
+                icon = QtGui.QIcon(os.path.join("icons", f"smile{value[2]}.png"))
+                self.ui.listWidget.setIconSize(size)
+                item.setIcon(icon)
+
+            item.setText(f"{value[1]}:\n{value[-1]}")
+            self.ui.listWidget.addItem(item)
+            print(value)
+
+
+    # Отправить сообщение на сервер
+    def send_message(self):
+        if self.connect_status:
+            message_text = self.ui.lineEdit.text()
+            smile_num = self.smile_type
+
+            # Если поле с текстом не пустое шифруем сообщение и передаем на сервер
+            if len(message_text) > 0:
+                payload = ['ENCRYPT_MESSAGE', self.nick, smile_num, message_text.encode()]
+                print(payload)
+                self.connect_monitor.send_encrypt(payload)
+
+                # Добавляем свое сообщение в ListWidget
+                item = QtWidgets.QListWidgetItem()
+                item.setTextAlignment(QtCore.Qt.AlignLeft)
+                size = QtCore.QSize(45, 45)
+
+                if smile_num != None:
+                    icon = QtGui.QIcon(os.path.join("icons", f"smile{smile_num}.png"))
+                    self.ui.listWidget.setIconSize(size)
+                    item.setIcon(icon)
+                item.setText(f"{self.nick} (ВЫ):\n{message_text}")
+                self.ui.listWidget.addItem(item)
+
+        else:
+            message = "Проверьте соединение с сервером"
+            QtWidgets.QMessageBox.about(self, "Оповещение", message)
+
+
+    # Покдлючаемся к общему серверу
+    def connect_to_server(self):
+        self.update_config()    # Обновляем данные пользователя
+
+        if self.nick != None:
+            try:
+                self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.client.connect((self.ip, self.port))
+
+                # Запускаем мониторинг входящих сообщений
+                self.connect_monitor.server_socket = self.client
+                self.connect_monitor.start()
+
+                # Блокируем кнопки
+                self.btn_locker(self.ui.pushButton_2, True)
+                self.btn_locker(self.ui.pushButton_7, True)
+
+            except Exception as err:
+                message = "Ошибка соединения с сервером.\nПроверьте правильность ввода данных"
+                QtWidgets.QMessageBox.about(self, "Оповещение", message)
+        else:   # Если пользователь не заполнил данные
+            message = "Для начала заполните данные во вкладке 'Настройки'"
+            QtWidgets.QMessageBox.about(self, "Оповещение", message)
+
+
+    # Блокировщик кнопок
+    def btn_locker(self, btn: object, lock_status: bool) -> None:
+        default_style = """
+        QPushButton{
+            color: white;
+            border-radius: 7px;
+            background-color: #595F76;
+        }
+        QPushButton:hover{
+            background-color: #50566E;
+        }      
+        QPushButton:pressed{
+            background-color: #434965;
+        }
+        """
+
+        lock_style = """
+        color: #9EA2AB;
+        border-radius: 7px;
+        background-color: #2C313C;
+        """
+
+        if lock_style:
+            btn.setDisabled(True)
+            btn.setStyleSheet(lock_style)
+        else:
+            btn.setDisabled(False)
+            btn.setStyleSheet(default_style)
+
+
+    # Обработчик события на выход из клиента
+    def closeEvent(self, value: QtGui.QCloseEvent) -> None:
+        try:
+            payload = ['EXIT', f'{self.nick}', 'вышел из чата!'.encode()]
+            self.connect_monitor.send_encrypt(payload); self.hide()
+            time.sleep(3); self.client.close()
+            self.close()
+        except Exception as err:
+            print(err)
+
+
+
 class Window(QMainWindow):
     def __init__(self):
-        super(Window, self).__init__()
 
+        super(Window, self).__init__()
         self.setWindowTitle('Крокодил')
         self.setCentralWidget(DrawWidget())
-        self.setFixedSize(800, 800)
-        self.about_window = AboutWindow()
+        self.setFixedSize(1500, 800)
         self.question = QAction(self)
         self.question.setText('Сгенерировать слово')
         self.question.triggered.connect(self.randomWord)
         self.menuBar().addAction(self.question)
-        self.question = Question()
 
 
-    def randomWord(self):
+        self.scene = QGraphicsScene()                   #НЕ ТРОГАТЬ Я ПОСТАВИЛ СВЕЧКУ ЗА ЭТИ СТРОКИ
+        self.view = QGraphicsView(self.scene)
+        self.view.setSceneRect(0, 0, 1500, 756)
+        self.setCentralWidget(self.view)
+        line = QLineEdit()
+        ChatWidget = self.scene.addWidget(Chat())
+        Draw = self.scene.addWidget(DrawWidget())
+        ChatWidget.setGeometry(QRectF(790,-10,600,800))
+
+
+
+
+    def randomWord(self): #генерация рандомного слова
         import random
         words = ["подпись", "вырез", "гранит", "кругозор", "блузка", "фараон", "клапан", "ёж", "вымя", "турист",
                  "колготки", "стоп", "кран", "питание",
@@ -381,6 +561,7 @@ class Window(QMainWindow):
 
     def question_show(self):
         self.question.show()
+
 
 
 if __name__ == '__main__':

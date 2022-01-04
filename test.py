@@ -1,82 +1,72 @@
-import sys
-from PyQt5 import QtCore, QtWidgets, uic
-from PyQt5.QtCore import QPropertyAnimation, pyqtProperty
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QApplication, QMainWindow
+import asyncio
+
+from pywebio import start_server
+from pywebio.input import *
+from pywebio.output import *
+from pywebio.session import defer_call, info as session_info, run_async, run_js
+
+chat_msgs = []
+online_users = set()
+
+MAX_MESSAGES_COUNT = 100
 
 
-class PushButton(QtWidgets.QPushButton):
-    hover = QtCore.pyqtSignal(str)
+async def main():
+    global chat_msgs
 
-    def __init__(self, parent=None):
-        super(PushButton, self).__init__(parent)
-        pass
+    put_markdown("## 🧊 Добро пожаловать в онлайн чат!\nИсходный код данного чата укладывается в 100 строк кода!")
 
-    def enterEvent(self, event):
-        self.hover.emit("enterEvent")
+    msg_box = output()
+    put_scrollable(msg_box, height=300, keep_bottom=True)
 
-    def leaveEvent(self, event):
-        self.hover.emit("leaveEvent")
+    nickname = await input("Войти в чат", required=True, placeholder="Ваше имя",
+                           validate=lambda n: "Такой ник уже используется!" if n in online_users or n == '📢' else None)
+    online_users.add(nickname)
 
+    chat_msgs.append(('📢', f'`{nickname}` присоединился к чату!'))
+    msg_box.append(put_markdown(f'📢 `{nickname}` присоединился к чату'))
 
-class AnimationShadowEffect(QGraphicsDropShadowEffect):
+    refresh_task = run_async(refresh_msg(nickname, msg_box))
 
-    def __init__(self, color, *args, **kwargs):
-        super(AnimationShadowEffect, self).__init__(*args, **kwargs)
-        self.setColor(color)
-        self.setOffset(0, 0)
-        self.setBlurRadius(0)
-        self._radius = 0
-        self.animation = QPropertyAnimation(self)
-        self.animation.setTargetObject(self)
-        self.animation.setDuration(1500)            # Время одного цикла
-        self.animation.setLoopCount(-1)             # Постоянный цикл
-        self.animation.setPropertyName(b'radius')
-        self.animation.setKeyValueAt(0.5, 15)
+    while True:
+        data = await input_group("💭 Новое сообщение", [
+            input(placeholder="Текст сообщения ...", name="msg"),
+            actions(name="cmd", buttons=["Отправить", {'label': "Выйти из чата", 'type': 'cancel'}])
+        ], validate=lambda m: ('msg', "Введите текст сообщения!") if m["cmd"] == "Отправить" and not m['msg'] else None)
 
-    def start(self):
-        self.animation.start()
+        if data is None:
+            break
 
-    def stop(self, r=0):
-        # Остановить анимацию и изменить значение радиуса
-        self.animation.stop()
-        self.radius = r
+        msg_box.append(put_markdown(f"`{nickname}`: {data['msg']}"))
+        chat_msgs.append((nickname, data['msg']))
 
-    @pyqtProperty(int)
-    def radius(self):
-        return self._radius
+    refresh_task.close()
 
-    @radius.setter
-    def radius(self, r):
-        self._radius = r
-        self.setBlurRadius(r)
+    online_users.remove(nickname)
+    toast("Вы вышли из чата!")
+    msg_box.append(put_markdown(f'📢 Пользователь `{nickname}` покинул чат!'))
+    chat_msgs.append(('📢', f'Пользователь `{nickname}` покинул чат!'))
+
+    put_buttons(['Перезайти'], onclick=lambda btn: run_js('window.location.reload()'))
 
 
-class App(QMainWindow):
-    def __init__(self):
-        super(App, self).__init__()
-        uic.loadUi("main.ui", self)
+async def refresh_msg(nickname, msg_box):
+    global chat_msgs
+    last_idx = len(chat_msgs)
 
-        #Инифицализация анимации
-        self.aniButton = AnimationShadowEffect(QtCore.Qt.white, self.designer_button)
-        self.designer_button.setGraphicsEffect(self.aniButton)
+    while True:
+        await asyncio.sleep(1)
 
-        #Добавление эффекта к кнопке
-        self.designer_button = PushButton(self.designer_button)
-        self.designer_button.setCheckable(True)
-        self.designer_button.hover.connect(self.button_hover)
+        for m in chat_msgs[last_idx:]:
+            if m[0] != nickname:  # if not a message from current user
+                msg_box.append(put_markdown(f"`{m[0]}`: {m[1]}"))
 
+        # remove expired
+        if len(chat_msgs) > MAX_MESSAGES_COUNT:
+            chat_msgs = chat_msgs[len(chat_msgs) // 2:]
 
-    def button_hover(self, hover):
-        if hover == "enterEvent":
-            self.aniButton.start()
-        elif hover == "leaveEvent":
-            self.aniButton.stop()
+        last_idx = len(chat_msgs)
 
 
-if __name__ == '__main__':
-
-    app = QApplication(sys.argv)
-
-    ex = App()
-    ex.show()
-    sys.exit(app.exec_())
+if __name__ == "__main__":
+    start_server(main, debug=True, port=8080, cdn=False)
